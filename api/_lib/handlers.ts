@@ -8,7 +8,7 @@ import {
   type DebateRequest,
   type Difficulty,
   type Message,
-} from '../src/lib/debateShared'
+} from './debateShared'
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant'

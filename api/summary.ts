@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-import { handleSummaryRequest } from '../server/handlers'
+import { handleSummaryRequest } from './_lib/handlers'
 
 export default async function handler(
   req: IncomingMessage,

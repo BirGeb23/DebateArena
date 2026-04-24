@@ -5,7 +5,7 @@ import {
   handleDebateRequest,
   handleScoreRequest,
   handleSummaryRequest,
-} from './server/handlers'
+} from './api/_lib/handlers'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {

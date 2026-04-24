@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-import { handleScoreRequest } from '../server/handlers'
+import { handleScoreRequest } from './_lib/handlers'
 
 export default async function handler(
   req: IncomingMessage,
