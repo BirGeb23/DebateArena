@@ -8,7 +8,7 @@ DebateArena is a React + Vite app that turns debate practice into a live sparrin
 - Topic picker with preset categories and custom topics
 - Difficulty modes: Casual, Competitive, Brutal
 - Steelman Mode for charitable restatement before the counterargument
-- Streamed AI debate responses powered by OpenAI
+- Streamed AI debate responses powered by Groq
 - Per-message coaching with logic, evidence, clarity, fallacy, and a tactical tip
 - Session summary modal with average scores and final assessment
 - Responsive UI tuned for desktop and mobile
@@ -19,7 +19,7 @@ DebateArena is a React + Vite app that turns debate practice into a live sparrin
 - TypeScript
 - Vite
 - Tailwind CSS
-- OpenAI Chat Completions API
+- Groq Chat Completions API
 - Lucide React
 
 ## Local Development
@@ -30,16 +30,16 @@ DebateArena is a React + Vite app that turns debate practice into a live sparrin
 npm install
 ```
 
-2. Create a local environment file:
+2. Add a local environment file in the project root:
 
 ```bash
-cp .env .env.local
+touch .env
 ```
 
-3. Add your OpenAI API key to `.env` or `.env.local`:
+3. Add your Groq API key to `.env`:
 
 ```env
-VITE_OPENAI_API_KEY=your_key_here
+GROQ_API_KEY=your_key_here
 ```
 
 4. Start the dev server:
@@ -62,15 +62,15 @@ npm run build
 4. Add:
 
 ```env
-VITE_OPENAI_API_KEY=your_key_here
+GROQ_API_KEY=your_key_here
 ```
 
 5. Save the variable, trigger a deploy, and wait for the production build to finish.
 
-Because the app is a client-side Vite SPA, `vercel.json` includes a rewrite to `index.html` for route safety.
+The app keeps Groq requests on the server. In local development, Vite serves the `/api` routes through middleware. In production, Vercel serves the same endpoints from the `api/` directory while `vercel.json` rewrites non-API routes back to `index.html`.
 
 ## Notes
 
-- Never commit your OpenAI API key.
+- Never commit your Groq API key.
 - `.env`, `node_modules`, and `dist` are already ignored.
 - The final URL Vercel gives you is the one to submit to Handshake.
