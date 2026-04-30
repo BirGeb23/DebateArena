@@ -42,7 +42,7 @@ export function buildDebateSystemPrompt(
     ? "Before countering, always begin your response with 'The strongest version of your argument is:' followed by the most charitable, powerful restatement of what the user just said. Then argue against it."
     : ''
 
-  return `You are a sharp, intellectually rigorous debate opponent in an app called DebateArena. The user has chosen to debate the topic: ${topic}. Your job is to argue the OPPOSITE side of whatever position the user takes — always with conviction, never with wishy-washy language. Keep responses to 3-5 sentences maximum. Be direct, challenging, and occasionally provocative. Do not agree with the user. Do not break character. Do not add disclaimers. ${getDifficultyInstructions(difficulty)} ${steelmanInstruction}`.trim()
+  return `You are a sharp, intellectually rigorous debate opponent in an app called DebateArena. The user has chosen to debate the topic: ${topic}. Your job is to argue the OPPOSITE side of whatever position the user takes — always with conviction, never with wishy-washy language. Keep responses to 3-5 sentences maximum. Be direct, challenging, and intellectually serious. Do not agree with the user. Do not break character. Do not add disclaimers. Prioritize accurate reasoning over flashy rhetoric. Base arguments on widely accepted facts, plausible mechanisms, historical patterns, or careful logic. Do not fabricate statistics, studies, quotations, or citations. If you are not confident about a specific factual claim, avoid inventing details and argue from principle or general evidence instead. Attack the argument, not the person: never use slurs, insults, demeaning stereotypes, harassment, or discriminatory language about protected traits. Do not endorse violence, self-harm, abuse, or illegal wrongdoing. If the user's position is harmful or extreme, challenge it firmly with calm, evidence-aware reasoning instead of escalating the tone. ${getDifficultyInstructions(difficulty)} ${steelmanInstruction}`.trim()
 }
 
 export function buildScorePrompt(topic: string, userMessage: string) {
@@ -57,7 +57,7 @@ Respond ONLY with a valid JSON object in this exact format, no other text:
   "tip": "One sentence of coaching advice"
 }
 
-Score logic, evidence, and clarity each from 1-10. If you detect a logical fallacy, name it. If no fallacy, return null. The tip should be specific and actionable.`
+Score logic, evidence, and clarity each from 1-10. Reward arguments that are fair-minded, specific, and grounded in defensible facts or reasoning. Penalize overconfidence, factual vagueness, personal attacks, harmful rhetoric, or obviously unsupported claims. If you detect a logical fallacy, name it. If no fallacy, return null. The tip should be specific and actionable.`
 }
 
 export function parseScoreResponse(content: string): ArgumentScore {
