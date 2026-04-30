@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import {
   buildDebateSystemPrompt,
+  buildSafetyReviewPrompt,
+  buildSafetyRewritePrompt,
   buildScorePrompt,
   parseScoreResponse,
   type ArgumentScore,
@@ -15,11 +17,20 @@ type ChatMessage = {
   content: string
 }
 
+type SafetyReview = {
+  safe: boolean
+  factualRisk: 'low' | 'medium' | 'high'
+  tone: 'respectful' | 'borderline' | 'unsafe'
+  issues: string[]
+}
+
 type JsonObject = Record<string, unknown>
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const DEBATE_MODEL = 'llama-3.3-70b-versatile'
 const ANALYSIS_MODEL = 'llama-3.1-8b-instant'
+const SAFE_FALLBACK_RESPONSE =
+  'I disagree with that position. A stronger counterargument should rest on careful reasoning, fair treatment of other people, and claims that can actually be defended. If the case depends on hostility, sweeping stereotypes, or shaky facts, then it is not a sound argument to begin with.'
 
 export async function handleDebateRequest(
   req: IncomingMessage,
@@ -32,34 +43,7 @@ export async function handleDebateRequest(
 
   try {
     const payload = validateDebateRequest(await readJsonBody(req))
-    const upstream = await fetchGroqCompletion({
-      model: DEBATE_MODEL,
-      stream: true,
-      messages: [
-        {
-          role: 'system',
-          content: buildDebateSystemPrompt(
-            payload.topic,
-            payload.difficulty,
-            payload.steelmanEnabled,
-          ),
-        },
-        ...payload.conversationHistory.map(
-          (message): ChatMessage => ({
-            role: message.sender === 'user' ? 'user' : 'assistant',
-            content: message.text,
-          }),
-        ),
-        {
-          role: 'user',
-          content: payload.userMessage,
-        },
-      ],
-    })
-
-    if (!upstream.ok || !upstream.body) {
-      throw new Error(`Groq debate request failed with status ${upstream.status}`)
-    }
+    const responseText = await generateSafeDebateResponse(payload)
 
     res.writeHead(200, {
       'Content-Type': 'text/plain; charset=utf-8',
@@ -67,7 +51,7 @@ export async function handleDebateRequest(
       Connection: 'keep-alive',
     })
 
-    await pipeGroqStream(upstream, (token) => {
+    await streamPlainText(responseText, (token) => {
       res.write(token)
     })
 
@@ -222,56 +206,167 @@ async function createChatCompletion(
   return payload.choices?.[0]?.message?.content?.trim() ?? ''
 }
 
-async function pipeGroqStream(
-  response: Response,
+async function generateSafeDebateResponse(payload: DebateRequest) {
+  const messages = buildDebateMessages(payload)
+  const firstDraft = await createChatCompletion(messages, DEBATE_MODEL)
+  const firstReview = await reviewDebateResponse(
+    payload.topic,
+    payload.userMessage,
+    firstDraft,
+  )
+
+  if (isAcceptableDebateResponse(firstReview)) {
+    return firstDraft
+  }
+
+  const revisedDraft = await createChatCompletion(
+    [
+      {
+        role: 'system',
+        content: buildSafetyRewritePrompt(
+          payload.topic,
+          payload.difficulty,
+          payload.steelmanEnabled,
+          payload.userMessage,
+          firstDraft,
+          firstReview.issues,
+        ),
+      },
+      ...payload.conversationHistory.map(
+        (message): ChatMessage => ({
+          role: message.sender === 'user' ? 'user' : 'assistant',
+          content: message.text,
+        }),
+      ),
+      {
+        role: 'user',
+        content: payload.userMessage,
+      },
+    ],
+    DEBATE_MODEL,
+  )
+  const revisedReview = await reviewDebateResponse(
+    payload.topic,
+    payload.userMessage,
+    revisedDraft,
+  )
+
+  if (isAcceptableDebateResponse(revisedReview)) {
+    return revisedDraft
+  }
+
+  return buildFallbackResponse(payload.steelmanEnabled, payload.userMessage)
+}
+
+async function reviewDebateResponse(
+  topic: string,
+  userMessage: string,
+  candidateResponse: string,
+) {
+  const content = await createChatCompletion(
+    [
+      {
+        role: 'user',
+        content: buildSafetyReviewPrompt(topic, userMessage, candidateResponse),
+      },
+    ],
+    ANALYSIS_MODEL,
+    { response_format: { type: 'json_object' } },
+  )
+
+  return parseSafetyReview(content)
+}
+
+function buildDebateMessages(payload: DebateRequest): ChatMessage[] {
+  return [
+    {
+      role: 'system',
+      content: buildDebateSystemPrompt(
+        payload.topic,
+        payload.difficulty,
+        payload.steelmanEnabled,
+      ),
+    },
+    ...payload.conversationHistory.map(
+      (message): ChatMessage => ({
+        role: message.sender === 'user' ? 'user' : 'assistant',
+        content: message.text,
+      }),
+    ),
+    {
+      role: 'user',
+      content: payload.userMessage,
+    },
+  ]
+}
+
+function parseSafetyReview(content: string) {
+  const parsed = JSON.parse(content) as {
+    safe?: boolean
+    factualRisk?: 'low' | 'medium' | 'high'
+    tone?: 'respectful' | 'borderline' | 'unsafe'
+    issues?: unknown
+  }
+
+  const factualRisk: SafetyReview['factualRisk'] =
+    parsed.factualRisk === 'medium' || parsed.factualRisk === 'high'
+      ? parsed.factualRisk
+      : 'low'
+  const tone: SafetyReview['tone'] =
+    parsed.tone === 'borderline' || parsed.tone === 'unsafe'
+      ? parsed.tone
+      : 'respectful'
+
+  return {
+    safe: parsed.safe === true,
+    factualRisk,
+    tone,
+    issues: Array.isArray(parsed.issues)
+      ? parsed.issues.filter((issue): issue is string => typeof issue === 'string')
+      : [],
+  } satisfies SafetyReview
+}
+
+function isAcceptableDebateResponse(review: SafetyReview) {
+  return (
+    review.safe &&
+    review.factualRisk !== 'high' &&
+    review.tone !== 'unsafe'
+  )
+}
+
+function buildFallbackResponse(steelmanEnabled: boolean, userMessage: string) {
+  if (!steelmanEnabled) {
+    return SAFE_FALLBACK_RESPONSE
+  }
+
+  return `The strongest version of your argument is: ${summarizeUserArgument(userMessage)} Now here's why I still disagree: ${SAFE_FALLBACK_RESPONSE}`
+}
+
+function summarizeUserArgument(userMessage: string) {
+  const trimmed = userMessage.trim()
+
+  if (!trimmed) {
+    return 'you are trying to make the most defensible case for your position.'
+  }
+
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
+}
+
+async function streamPlainText(
+  response: string,
   onToken: (token: string) => void,
 ) {
-  const reader = response.body?.getReader()
+  const parts = response.match(/\S+\s*/g) ?? [response]
 
-  if (!reader) {
-    throw createHttpError(502, 'Missing Groq response body.')
+  for (const part of parts) {
+    onToken(part)
+    await wait(8)
   }
+}
 
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-
-    if (done) {
-      break
-    }
-
-    buffer += decoder.decode(value, { stream: true })
-    const parts = buffer.split('\n\n')
-    buffer = parts.pop() ?? ''
-
-    for (const part of parts) {
-      const lines = part
-        .split('\n')
-        .filter((line) => line.startsWith('data: '))
-        .map((line) => line.slice(6).trim())
-
-      for (const line of lines) {
-        if (!line || line === '[DONE]') {
-          continue
-        }
-
-        const chunk = JSON.parse(line) as {
-          choices?: Array<{
-            delta?: {
-              content?: string
-            }
-          }>
-        }
-        const token = chunk.choices?.[0]?.delta?.content ?? ''
-
-        if (token) {
-          onToken(token)
-        }
-      }
-    }
-  }
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
 
 async function readJsonBody(req: IncomingMessage) {
