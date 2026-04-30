@@ -8,7 +8,7 @@ import {
   type DebateRequest,
   type Difficulty,
   type Message,
-} from './debateShared'
+} from './debateShared.js'
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant'
