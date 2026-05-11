@@ -1,76 +1,58 @@
-# DebateArena
+DebateArena
+DebateArena is an AI-powered debate practice app where users choose a topic, take a position, and argue against a live opponent in real time. Instead of acting like a passive chatbot, the app pushes back, scores each response, highlights possible fallacies, and offers coaching so the experience feels both competitive and educational.
 
-DebateArena is a React + Vite app that turns debate practice into a live sparring session with AI. Users can start from a polished landing page, choose a topic, set the debate difficulty, optionally enable Steelman Mode, and argue against a streamed AI opponent that also scores each argument for logic, evidence, clarity, and fallacies.
+Why I Built It
+I built DebateArena to create something more interactive than a standard chat experience. The goal was to help users sharpen critical thinking, practice defending ideas from multiple angles, and engage with an AI system that challenges their reasoning instead of simply agreeing with them.
 
-## Features
+I also wanted the product to feel thoughtful and responsible, so I added safety-focused prompt design and server-side review logic to keep responses more respectful, evidence-aware, and grounded.
 
-- Landing page with a clean handoff into topic selection
-- Topic picker with preset categories and custom topics
-- Difficulty modes: Casual, Competitive, Brutal
-- Steelman Mode for charitable restatement before the counterargument
-- Streamed AI debate responses powered by Groq
-- Per-message coaching with logic, evidence, clarity, fallacy, and a tactical tip
-- Session summary modal with average scores and final assessment
-- Responsive UI tuned for desktop and mobile
+Features
+Landing page with a clear entry into the app
+Topic picker with preset categories and custom topic support
+Difficulty modes: Casual, Competitive, and Brutal
+Steelman Mode for charitable restatement before the counterargument
+Live AI debate responses powered by Groq
+Argument scoring for logic, evidence, and clarity
+Logical fallacy detection and coaching tips
+End-of-session summary with performance feedback
+Mobile-friendly responsive design
+Server-side safety checks to reduce offensive, fabricated, or abusive replies
+Tech Stack
+React 19
+TypeScript
+Vite
+Tailwind CSS
+Groq API
+Vercel
+Lucide React
+How It Works
+DebateArena uses a React + Vite frontend for the user interface and server-side API routes for the AI layer. The frontend handles topic selection, chat state, scoring UI, and summaries, while the backend routes call Groq for:
 
-## Tech Stack
+debate responses
+scoring and fallacy analysis
+session summaries
+safety review before replies are returned to the user
+In local development, Vite serves the /api routes through middleware. In production, Vercel serves those routes from the api/ directory while vercel.json rewrites non-API routes back to index.html.
 
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS
-- Groq Chat Completions API
-- Lucide React
-
-## Local Development
-
-1. Install dependencies:
-
-```bash
+Running Locally
+Install dependencies:
 npm install
-```
-
-2. Add a local environment file in the project root:
-
-```bash
+Create a local environment file:
 touch .env
-```
-
-3. Add your Groq API key to `.env`:
-
-```env
+Add your Groq API key:
 GROQ_API_KEY=your_key_here
-```
-
-4. Start the dev server:
-
-```bash
+Start the development server:
 npm run dev
-```
-
-5. Build for production:
-
-```bash
+Build the project:
 npm run build
-```
-
-## Vercel Deployment
-
-1. Push this project to GitHub.
-2. Go to Vercel, import the GitHub repo, and keep the framework preset as `Vite`.
-3. In the Vercel project dashboard, open `Settings` > `Environment Variables`.
-4. Add:
-
-```env
+Deploying to Vercel
+Push the repo to GitHub.
+Import the project into Vercel.
+Add the environment variable below in Settings > Environment Variables:
 GROQ_API_KEY=your_key_here
-```
+Deploy or redeploy the project.
+Notes
+Never commit your API key.
+.env, node_modules, and dist are already ignored.
+LLM output can still be imperfect, but the app includes additional guardrails to make debate responses more respectful and reliable.
 
-5. Save the variable, trigger a deploy, and wait for the production build to finish.
-
-The app keeps Groq requests on the server. In local development, Vite serves the `/api` routes through middleware. In production, Vercel serves the same endpoints from the `api/` directory while `vercel.json` rewrites non-API routes back to `index.html`.
-
-## Notes
-
-- Never commit your Groq API key.
-- `.env`, `node_modules`, and `dist` are already ignored.
-- The final URL Vercel gives you is the one to submit to Handshake.
