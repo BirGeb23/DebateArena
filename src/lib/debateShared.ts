@@ -70,7 +70,7 @@ export function buildDebateSystemPrompt(
     ? 'This is a sensitive or identity-adjacent topic. Use extra care, avoid inflammatory framing, and prefer nuanced, principle-based disagreement.'
     : ''
 
-  return `You are a sharp, intellectually rigorous debate guide in an app called DebateArena. The user has chosen to debate the topic: ${topic}. Keep responses to 3-5 sentences maximum. Be direct, challenging, and intellectually serious. Do not break character. Do not add disclaimers. Prioritize accurate reasoning over flashy rhetoric. Base arguments on widely accepted facts, plausible mechanisms, historical patterns, or careful logic. Do not fabricate statistics, studies, quotations, or citations. Avoid precise numbers, named studies, or claimed authorities unless you are highly confident they are real and relevant. If you are not confident about a specific factual claim, avoid inventing details and argue from principle or general evidence instead. Attack the argument, not the person: never use slurs, insults, demeaning stereotypes, harassment, or discriminatory language about protected traits. Do not endorse violence, self-harm, abuse, or illegal wrongdoing. If the user's position is harmful or extreme, challenge it firmly with calm, evidence-aware reasoning instead of escalating the tone. Use a ${lens} lens for this reply so the debate explores a distinct angle. ${getDifficultyInstructions(difficulty)} ${getStyleInstructions(style)} ${sensitiveTopicInstruction} ${steelmanInstruction}`.trim()
+  return `You are a sharp, intellectually rigorous debate guide in an app called DebateArena. The user has chosen to debate the topic: ${topic}. Keep responses to 3-5 sentences maximum. Be direct, challenging, and intellectually serious. Do not break character. Do not add disclaimers. Prioritize accurate reasoning over flashy rhetoric. Base arguments on widely accepted facts, plausible mechanisms, historical patterns, or careful logic. Do not fabricate statistics, studies, quotations, or citations. Avoid precise numbers, named studies, or claimed authorities unless you are highly confident they are real and relevant. If you are not confident about a specific factual claim, avoid inventing details and argue from principle or general evidence instead. Attack the argument, not the person: never use slurs, insults, demeaning stereotypes, harassment, or discriminatory language about protected traits. Do not endorse violence, self-harm, abuse, or illegal wrongdoing. If the user's position is harmful or extreme, challenge it firmly with calm, evidence-aware reasoning instead of escalating the tone. Favor ${lens} reasoning for this reply only if it naturally fits the topic; if it does not, use the most natural adjacent angle instead. Do not explicitly announce the lens unless doing so genuinely improves clarity. ${getDifficultyInstructions(difficulty)} ${getStyleInstructions(style)} ${sensitiveTopicInstruction} ${steelmanInstruction}`.trim()
 }
 
 export function buildScorePrompt(topic: string, userMessage: string) {
@@ -115,7 +115,7 @@ function getPerspectiveLens(
   topic: string,
   conversationHistoryLength: number,
 ): PerspectiveLens {
-  const lenses: PerspectiveLens[] = [
+  const allLenses: PerspectiveLens[] = [
     'ethical',
     'economic',
     'social',
@@ -123,6 +123,7 @@ function getPerspectiveLens(
     'practical',
     'psychological',
   ]
+  const allowedLenses = getAllowedLenses(topic)
   const seed = `${topic}:${conversationHistoryLength}`
   let hash = 0
 
@@ -130,7 +131,110 @@ function getPerspectiveLens(
     hash = (hash * 31 + character.charCodeAt(0)) >>> 0
   }
 
-  return lenses[hash % lenses.length]
+  return allowedLenses[hash % allowedLenses.length] ?? allLenses[0]
+}
+
+function getAllowedLenses(topic: string): PerspectiveLens[] {
+  const normalizedTopic = topic.toLowerCase()
+  const lensSet = new Set<PerspectiveLens>(['practical', 'social'])
+
+  if (matchesAny(normalizedTopic, ['cat', 'dog', 'pizza', 'movie', 'book', 'morning', 'evening'])) {
+    lensSet.add('psychological')
+    return orderLenses(lensSet)
+  }
+
+  if (
+    matchesAny(normalizedTopic, [
+      'judge',
+      'legal',
+      'rights',
+      'mandatory',
+      'voting',
+      'genetic',
+      'animals',
+      'abortion',
+      'death penalty',
+    ])
+  ) {
+    lensSet.add('ethical')
+  }
+
+  if (
+    matchesAny(normalizedTopic, [
+      'college',
+      'income',
+      'work',
+      'tuition',
+      'debt',
+      'currency',
+      'crypto',
+      'jobs',
+      'economy',
+      'remote work',
+      'replace human drivers',
+    ])
+  ) {
+    lensSet.add('economic')
+  }
+
+  if (
+    matchesAny(normalizedTopic, [
+      'social media',
+      'smartphone',
+      'violence',
+      'mental health',
+      'interaction',
+      'metaverse',
+      'intelligent',
+      'cats',
+      'dogs',
+    ])
+  ) {
+    lensSet.add('psychological')
+  }
+
+  if (
+    matchesAny(normalizedTopic, [
+      'ai',
+      'privacy',
+      'social media',
+      'remote work',
+      'college',
+      'crypto',
+      'self-driving',
+      'metaverse',
+      'cancel culture',
+    ])
+  ) {
+    lensSet.add('historical')
+  }
+
+  if (normalizedTopic.includes('should')) {
+    lensSet.add('ethical')
+  }
+
+  if (lensSet.size === 2) {
+    lensSet.add('psychological')
+  }
+
+  return orderLenses(lensSet)
+}
+
+function orderLenses(lensSet: Set<PerspectiveLens>) {
+  const preferredOrder: PerspectiveLens[] = [
+    'practical',
+    'social',
+    'psychological',
+    'ethical',
+    'economic',
+    'historical',
+  ]
+
+  return preferredOrder.filter((lens) => lensSet.has(lens))
+}
+
+function matchesAny(topic: string, keywords: string[]) {
+  return keywords.some((keyword) => topic.includes(keyword))
 }
 
 function isSensitiveTopic(topic: string) {
