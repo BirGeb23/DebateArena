@@ -508,12 +508,12 @@ export default function DebateChat({
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault()
                     void handleSubmit()
                   }
                 }}
-                placeholder="State your argument... Press Cmd/Ctrl + Enter to submit"
+                placeholder="State your argument... Press Enter to submit, Shift + Enter for a new line"
                 className="min-h-[48px] w-full resize-none overflow-y-auto rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
               />
               <button
