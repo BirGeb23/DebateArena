@@ -226,6 +226,7 @@ async function generateSafeDebateResponse(payload: DebateRequest) {
         content: buildSafetyRewritePrompt(
           payload.topic,
           payload.difficulty,
+          payload.style,
           payload.steelmanEnabled,
           payload.userMessage,
           firstDraft,
@@ -284,7 +285,9 @@ function buildDebateMessages(payload: DebateRequest): ChatMessage[] {
       content: buildDebateSystemPrompt(
         payload.topic,
         payload.difficulty,
+        payload.style,
         payload.steelmanEnabled,
+        payload.conversationHistory.length,
       ),
     },
     ...payload.conversationHistory.map(
@@ -393,6 +396,7 @@ function validateDebateRequest(body: JsonObject): DebateRequest {
   return {
     topic: requireString(body.topic, 'topic'),
     difficulty: validateDifficulty(body.difficulty),
+    style: validateStyle(body.style),
     steelmanEnabled: Boolean(body.steelmanEnabled),
     conversationHistory: validateMessageList(body.conversationHistory),
     userMessage: requireString(body.userMessage, 'userMessage'),
@@ -405,6 +409,14 @@ function validateDifficulty(value: unknown): Difficulty {
   }
 
   throw createHttpError(400, 'Invalid difficulty.')
+}
+
+function validateStyle(value: unknown) {
+  if (value === 'opponent' || value === 'coach' || value === 'balanced') {
+    return value
+  }
+
+  throw createHttpError(400, 'Invalid style.')
 }
 
 function validateMessageList(value: unknown): Message[] {

@@ -1,11 +1,12 @@
 import type {
   ArgumentScore,
+  DebateStyle,
   DebateRequest,
   Difficulty,
   Message,
 } from './debateShared'
 
-export type { ArgumentScore, Difficulty, Message } from './debateShared'
+export type { ArgumentScore, DebateStyle, Difficulty, Message } from './debateShared'
 
 async function parseJsonResponse<T>(response: Response) {
   if (!response.ok) {
@@ -18,6 +19,7 @@ async function parseJsonResponse<T>(response: Response) {
 export async function getDebateResponse(
   topic: string,
   difficulty: Difficulty,
+  style: DebateStyle,
   steelmanEnabled: boolean,
   conversationHistory: Message[],
   userMessage: string,
@@ -26,6 +28,7 @@ export async function getDebateResponse(
   const payload: DebateRequest = {
     topic,
     difficulty,
+    style,
     steelmanEnabled,
     conversationHistory,
     userMessage,

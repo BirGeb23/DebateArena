@@ -4,6 +4,7 @@ export type Message = {
 }
 
 export type Difficulty = 'casual' | 'competitive' | 'brutal'
+export type DebateStyle = 'opponent' | 'coach' | 'balanced'
 
 export type ArgumentScore = {
   logic: number
@@ -16,10 +17,19 @@ export type ArgumentScore = {
 export type DebateRequest = {
   topic: string
   difficulty: Difficulty
+  style: DebateStyle
   steelmanEnabled: boolean
   conversationHistory: Message[]
   userMessage: string
 }
+
+type PerspectiveLens =
+  | 'ethical'
+  | 'economic'
+  | 'social'
+  | 'historical'
+  | 'practical'
+  | 'psychological'
 
 export function getDifficultyInstructions(difficulty: Difficulty) {
   switch (difficulty) {
@@ -33,16 +43,34 @@ export function getDifficultyInstructions(difficulty: Difficulty) {
   }
 }
 
+export function getStyleInstructions(style: DebateStyle) {
+  switch (style) {
+    case 'coach':
+      return "Act like a demanding but constructive debate coach. Briefly identify what is strongest in the user's point, then explain how to strengthen it or where it is vulnerable. You may challenge the user's position, but your top priority is helping them reason more clearly."
+    case 'balanced':
+      return 'Briefly acknowledge the strongest point on each side before giving your counterargument. Aim for nuance and tradeoff-aware reasoning rather than pure confrontation.'
+    case 'opponent':
+    default:
+      return 'Act as a true debate opponent. Take the opposing side directly and pressure-test the user’s reasoning without becoming disrespectful.'
+  }
+}
+
 export function buildDebateSystemPrompt(
   topic: string,
   difficulty: Difficulty,
+  style: DebateStyle,
   steelmanEnabled: boolean,
+  conversationHistoryLength = 0,
 ) {
   const steelmanInstruction = steelmanEnabled
     ? "Before countering, always begin your response with 'The strongest version of your argument is:' followed by the most charitable, powerful restatement of what the user just said. Then argue against it."
     : ''
+  const lens = getPerspectiveLens(topic, conversationHistoryLength)
+  const sensitiveTopicInstruction = isSensitiveTopic(topic)
+    ? 'This is a sensitive or identity-adjacent topic. Use extra care, avoid inflammatory framing, and prefer nuanced, principle-based disagreement.'
+    : ''
 
-  return `You are a sharp, intellectually rigorous debate opponent in an app called DebateArena. The user has chosen to debate the topic: ${topic}. Your job is to argue the OPPOSITE side of whatever position the user takes — always with conviction, never with wishy-washy language. Keep responses to 3-5 sentences maximum. Be direct, challenging, and intellectually serious. Do not agree with the user. Do not break character. Do not add disclaimers. Prioritize accurate reasoning over flashy rhetoric. Base arguments on widely accepted facts, plausible mechanisms, historical patterns, or careful logic. Do not fabricate statistics, studies, quotations, or citations. Avoid precise numbers, named studies, or claimed authorities unless you are highly confident they are real and relevant. If you are not confident about a specific factual claim, avoid inventing details and argue from principle or general evidence instead. Attack the argument, not the person: never use slurs, insults, demeaning stereotypes, harassment, or discriminatory language about protected traits. Do not endorse violence, self-harm, abuse, or illegal wrongdoing. If the user's position is harmful or extreme, challenge it firmly with calm, evidence-aware reasoning instead of escalating the tone. ${getDifficultyInstructions(difficulty)} ${steelmanInstruction}`.trim()
+  return `You are a sharp, intellectually rigorous debate guide in an app called DebateArena. The user has chosen to debate the topic: ${topic}. Keep responses to 3-5 sentences maximum. Be direct, challenging, and intellectually serious. Do not break character. Do not add disclaimers. Prioritize accurate reasoning over flashy rhetoric. Base arguments on widely accepted facts, plausible mechanisms, historical patterns, or careful logic. Do not fabricate statistics, studies, quotations, or citations. Avoid precise numbers, named studies, or claimed authorities unless you are highly confident they are real and relevant. If you are not confident about a specific factual claim, avoid inventing details and argue from principle or general evidence instead. Attack the argument, not the person: never use slurs, insults, demeaning stereotypes, harassment, or discriminatory language about protected traits. Do not endorse violence, self-harm, abuse, or illegal wrongdoing. If the user's position is harmful or extreme, challenge it firmly with calm, evidence-aware reasoning instead of escalating the tone. Use a ${lens} lens for this reply so the debate explores a distinct angle. ${getDifficultyInstructions(difficulty)} ${getStyleInstructions(style)} ${sensitiveTopicInstruction} ${steelmanInstruction}`.trim()
 }
 
 export function buildScorePrompt(topic: string, userMessage: string) {
@@ -81,4 +109,54 @@ function normalizeScore(value: unknown) {
   }
 
   return Math.max(1, Math.min(10, Math.round(value)))
+}
+
+function getPerspectiveLens(
+  topic: string,
+  conversationHistoryLength: number,
+): PerspectiveLens {
+  const lenses: PerspectiveLens[] = [
+    'ethical',
+    'economic',
+    'social',
+    'historical',
+    'practical',
+    'psychological',
+  ]
+  const seed = `${topic}:${conversationHistoryLength}`
+  let hash = 0
+
+  for (const character of seed) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0
+  }
+
+  return lenses[hash % lenses.length]
+}
+
+function isSensitiveTopic(topic: string) {
+  const normalizedTopic = topic.toLowerCase()
+  const sensitiveKeywords = [
+    'race',
+    'racism',
+    'religion',
+    'gender',
+    'sexuality',
+    'lgbt',
+    'trans',
+    'immigration',
+    'abortion',
+    'violence',
+    'police',
+    'prison',
+    'death penalty',
+    'disability',
+    'mental health',
+    'suicide',
+    'war',
+    'terrorism',
+    'israel',
+    'palestine',
+  ]
+
+  return sensitiveKeywords.some((keyword) => normalizedTopic.includes(keyword))
 }

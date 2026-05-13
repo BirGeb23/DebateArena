@@ -3,11 +3,12 @@ import { useState } from 'react'
 import DebateChat from './components/DebateChat'
 import LandingPage from './components/LandingPage'
 import TopicPicker from './components/TopicPicker'
-import type { Difficulty } from './lib/debateApi'
+import type { DebateStyle, Difficulty } from './lib/debateApi'
 
 type DebateSettings = {
   topic: string
   difficulty: Difficulty
+  style: DebateStyle
 }
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         <DebateChat
           topic={debateSettings.topic}
           difficulty={debateSettings.difficulty}
+          style={debateSettings.style}
           onNewDebate={() => {
             setDebateSettings(null)
             setStage('picker')
@@ -29,8 +31,8 @@ function App() {
         />
       ) : (
         <TopicPicker
-          onSelectTopic={(topic, difficulty) => {
-            setDebateSettings({ topic, difficulty })
+          onSelectTopic={(topic, difficulty, style) => {
+            setDebateSettings({ topic, difficulty, style })
             setStage('chat')
           }}
         />

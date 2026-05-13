@@ -2,10 +2,14 @@ import { Sparkles } from 'lucide-react'
 import { useState } from 'react'
 
 import { topicCategories } from '../data/topics'
-import type { Difficulty } from '../lib/debateApi'
+import type { DebateStyle, Difficulty } from '../lib/debateApi'
 
 type TopicPickerProps = {
-  onSelectTopic: (topic: string, difficulty: Difficulty) => void
+  onSelectTopic: (
+    topic: string,
+    difficulty: Difficulty,
+    style: DebateStyle,
+  ) => void
 }
 
 const difficultyOptions: Array<{
@@ -30,9 +34,36 @@ const difficultyOptions: Array<{
   },
 ]
 
+const styleOptions: Array<{
+  value: DebateStyle
+  label: string
+  description: string
+  activeClass: string
+}> = [
+  {
+    value: 'opponent',
+    label: 'Opponent',
+    description: 'Direct pushback and strong counterarguments.',
+    activeClass: 'border-slate-300 bg-slate-900 text-white',
+  },
+  {
+    value: 'coach',
+    label: 'Coach',
+    description: 'Constructive critique focused on sharpening your case.',
+    activeClass: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
+  {
+    value: 'balanced',
+    label: 'Balanced',
+    description: 'Nuanced tradeoffs before the counterargument.',
+    activeClass: 'border-violet-200 bg-violet-50 text-violet-800',
+  },
+]
+
 export default function TopicPicker({ onSelectTopic }: TopicPickerProps) {
   const [customTopic, setCustomTopic] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty>('competitive')
+  const [style, setStyle] = useState<DebateStyle>('opponent')
 
   const submitCustomTopic = () => {
     const trimmed = customTopic.trim()
@@ -41,7 +72,7 @@ export default function TopicPicker({ onSelectTopic }: TopicPickerProps) {
       return
     }
 
-    onSelectTopic(trimmed, difficulty)
+    onSelectTopic(trimmed, difficulty, style)
   }
 
   return (
@@ -80,6 +111,37 @@ export default function TopicPicker({ onSelectTopic }: TopicPickerProps) {
                     }`}
                   >
                     {option.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <p className="mb-2 text-sm font-medium text-slate-700">Debate Style</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              {styleOptions.map((option) => {
+                const isActive = option.value === style
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setStyle(option.value)}
+                    className={`rounded-2xl border p-3 text-left transition ${
+                      isActive
+                        ? option.activeClass
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{option.label}</div>
+                    <div
+                      className={`mt-1 text-xs leading-5 ${
+                        isActive ? 'text-inherit/80' : 'text-slate-500'
+                      }`}
+                    >
+                      {option.description}
+                    </div>
                   </button>
                 )
               })}
@@ -127,7 +189,7 @@ export default function TopicPicker({ onSelectTopic }: TopicPickerProps) {
                 <button
                   key={topic}
                   type="button"
-                  onClick={() => onSelectTopic(topic, difficulty)}
+                  onClick={() => onSelectTopic(topic, difficulty, style)}
                   className="min-h-[112px] rounded-3xl border border-slate-200 bg-white p-4 text-left text-sm font-medium leading-6 text-slate-800 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
                 >
                   {topic}

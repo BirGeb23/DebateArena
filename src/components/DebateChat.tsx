@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   type Difficulty,
+  type DebateStyle,
   getArgumentScore,
   getDebateResponse,
   getSessionAssessment,
@@ -13,6 +14,7 @@ import {
 type DebateChatProps = {
   topic: string
   difficulty: Difficulty
+  style: DebateStyle
   onNewDebate: () => void
 }
 
@@ -72,6 +74,7 @@ function SummaryMetric({
 export default function DebateChat({
   topic,
   difficulty,
+  style,
   onNewDebate,
 }: DebateChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -107,6 +110,27 @@ export default function DebateChat({
         }
     }
   }, [difficulty])
+
+  const styleBadge = useMemo(() => {
+    switch (style) {
+      case 'coach':
+        return {
+          label: 'Coach',
+          className: 'bg-amber-50 text-amber-800 ring-amber-200',
+        }
+      case 'balanced':
+        return {
+          label: 'Balanced',
+          className: 'bg-violet-50 text-violet-800 ring-violet-200',
+        }
+      case 'opponent':
+      default:
+        return {
+          label: 'Opponent',
+          className: 'bg-slate-100 text-slate-700 ring-slate-200',
+        }
+    }
+  }, [style])
 
   const userScores = useMemo(
     () =>
@@ -270,6 +294,7 @@ export default function DebateChat({
     const debatePromise = getDebateResponse(
       topic,
       difficulty,
+      style,
       isSteelmanEnabled,
       historyBeforeSubmit,
       trimmed,
@@ -342,6 +367,11 @@ export default function DebateChat({
                 >
                   {difficultyBadge.label}
                 </span>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${styleBadge.className}`}
+                >
+                  {styleBadge.label}
+                </span>
                 {isSteelmanEnabled && (
                   <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
                     Steelman ON
@@ -397,8 +427,7 @@ export default function DebateChat({
           >
             {messages.length === 0 && (
               <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-sm leading-6 text-slate-600">
-                Make the first argument. The opponent will take the opposite side and
-                push back hard.
+                Make the first argument. DebateArena will respond in {styleBadge.label.toLowerCase()} mode and use a different reasoning angle as the conversation develops.
               </div>
             )}
 
